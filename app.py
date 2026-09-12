@@ -39,7 +39,7 @@ def curva_ipr(pr, pb, j):
     return qo, pwf
 
 
-def tarjeta_resultados(titulo, resultados, estado=" ):
+def tarjeta_resultados(titulo, resultados, estado=" "):
     cajas = ""
     for nombre, valor in resultados:
         cajas += f"""
@@ -362,8 +362,8 @@ else:
                     ("Espesor neto hn", f"{hn:,.2f} ft"),
                     ("POES", f"{poes:,.2f} STB"),
                     ("POES", f"{poes/1_000_000:,.3f} MMSTB"),
-                    ("Volumen recuperable", f"{recuperable:,.2f} STB")
-                    ("Volumen recuperable", f"{recuperable/1_000_000:,.3f} MMSTB")
+                    ("Petróleo recuperable", f"{recuperable:,.2f} STB"),
+                    ("Petróleo recuperable", f"{recuperable/1_000_000:,.3f} MMSTB")
                 ]
             )
             components.html(html_resultados, height=245)
@@ -384,4 +384,3 @@ else:
                 height=450
             )
             st.plotly_chart(fig, use_container_width=True)
-
