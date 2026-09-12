@@ -39,6 +39,88 @@ def curva_ipr(pr, pb, j):
     return qo, pwf
 
 
+def tarjeta_resultados(titulo, resultados, estado="Estado: cursor fuera"):
+    cajas = ""
+    for nombre, valor in resultados:
+        cajas += f"""
+        <div class="resultado">
+            <div class="nombre">{nombre}</div>
+            <div class="valor">{valor}</div>
+        </div>
+        """
+
+    return f"""
+    <style>
+        * {{ box-sizing: border-box; }}
+        body {{ margin:0; background:transparent; font-family:Arial,sans-serif; }}
+
+        #shell {{
+            position:relative; padding:3px; border-radius:22px;
+            overflow:hidden; background:#163d59;
+        }}
+
+        #shell::before {{
+            content:""; position:absolute; width:180%; height:180%;
+            left:-40%; top:-40%;
+            background:conic-gradient(
+                transparent 0deg, transparent 250deg,
+                #16e0c0 290deg, #8affef 320deg, transparent 350deg
+            );
+            opacity:0;
+        }}
+
+        #shell.active::before {{
+            opacity:1;
+            animation:giro 2s linear infinite;
+        }}
+
+        @keyframes giro {{
+            from {{ transform:rotate(0deg); }}
+            to {{ transform:rotate(360deg); }}
+        }}
+
+        #shell.active {{
+            box-shadow:0 0 8px #16e0c0, 0 0 22px #16e0c0;
+        }}
+
+        #card {{
+            position:relative; z-index:1; background:#173f5f;
+            border-radius:19px; padding:22px 28px; color:white;
+        }}
+
+        .titulo {{ color:#16e0c0; font-size:24px; font-weight:bold; margin-bottom:18px; }}
+        .resultados {{ display:flex; gap:15px; flex-wrap:wrap; }}
+        .resultado {{ flex:1; min-width:180px; background:#205577; border-radius:12px; padding:15px; }}
+        .nombre {{ font-size:14px; color:#d8e6ee; }}
+        .valor {{ color:#16e0c0; font-size:22px; font-weight:bold; margin-top:5px; }}
+        #status {{ margin-top:18px; padding-top:12px; border-top:1px solid #4b748d; color:#e5edf2; }}
+    </style>
+
+    <div id="shell">
+        <div id="card">
+            <div class="titulo">{titulo}</div>
+            <div class="resultados">{cajas}</div>
+            <div id="status">{estado}</div>
+        </div>
+    </div>
+
+    <script>
+        const shell = document.getElementById("shell");
+        const status = document.getElementById("status");
+
+        shell.addEventListener("mouseenter", () => {{
+            shell.classList.add("active");
+            status.textContent = "Estado: interacción activa";
+        }});
+
+        shell.addEventListener("mouseleave", () => {{
+            shell.classList.remove("active");
+            status.textContent = "{estado}";
+        }});
+    </script>
+    """
+
+
 # NAVEGACIÓN
 st.sidebar.title("🛢️ Oil & Gas")
 pagina = st.sidebar.radio("Navegación", ["Home", "Ejercicios"])
@@ -116,90 +198,14 @@ else:
         else:
             qo, qb, qmax, regime = ipr(pr, pb, j, pwf)
 
-                        # TARJETA DE RESULTADOS CON HTML + CSS + JAVASCRIPT
-            html_resultados = f"""
-            <style>
-                * {{ box-sizing: border-box; }}
-                body {{ margin:0; background:transparent; font-family:Arial,sans-serif; }}
-
-                #shell {{
-                    position:relative; padding:3px; border-radius:22px;
-                    overflow:hidden; background:#163d59;
-                }}
-
-                /* Borde neón que gira al entrar el mouse */
-                #shell::before {{
-                    content:""; position:absolute; width:180%; height:180%;
-                    left:-40%; top:-40%;
-                    background:conic-gradient(transparent 0deg, transparent 250deg,
-                    #16e0c0 290deg, #8affef 320deg, transparent 350deg);
-                    opacity:0;
-                }}
-
-                #shell.active::before {{
-                    opacity:1;
-                    animation:giro 2s linear infinite;
-                }}
-
-                @keyframes giro {{
-                    from {{ transform:rotate(0deg); }}
-                    to {{ transform:rotate(360deg); }}
-                }}
-
-                #shell.active {{
-                    box-shadow:0 0 8px #16e0c0, 0 0 22px #16e0c0;
-                }}
-
-                #card {{
-                    position:relative; z-index:1; background:#173f5f;
-                    border-radius:19px; padding:22px 28px; color:white;
-                }}
-
-                .titulo {{ color:#16e0c0; font-size:24px; font-weight:bold; margin-bottom:18px; }}
-                .resultados {{ display:flex; gap:15px; flex-wrap:wrap; }}
-                .resultado {{ flex:1; min-width:180px; background:#205577; border-radius:12px; padding:15px; }}
-                .nombre {{ font-size:14px; color:#d8e6ee; }}
-                .valor {{ color:#16e0c0; font-size:22px; font-weight:bold; margin-top:5px; }}
-                #status {{ margin-top:18px; padding-top:12px; border-top:1px solid #4b748d; color:#e5edf2; }}
-            </style>
-
-            <div id="shell">
-                <div id="card">
-                    <div class="titulo">Resultados IPR</div>
-                    <div class="resultados">
-                        <div class="resultado">
-                            <div class="nombre">Caudal de petróleo qo</div>
-                            <div class="valor">{qo:,.2f} STB/d</div>
-                        </div>
-                        <div class="resultado">
-                            <div class="nombre">Caudal a presión de burbuja qB</div>
-                            <div class="valor">{qb:,.2f} STB/d</div>
-                        </div>
-                        <div class="resultado">
-                            <div class="nombre">Caudal máximo qo,max</div>
-                            <div class="valor">{qmax:,.2f} STB/d</div>
-                        </div>
-                    </div>
-                    <div id="status">Estado: cursor fuera</div>
-                </div>
-            </div>
-
-            <script>
-                const shell = document.getElementById("shell");
-                const status = document.getElementById("status");
-
-                shell.addEventListener("mouseenter", () => {{
-                    shell.classList.add("active");
-                    status.textContent = "Estado: interacción activa";
-                }});
-
-                shell.addEventListener("mouseleave", () => {{
-                    shell.classList.remove("active");
-                    status.textContent = "Estado: cursor fuera";
-                }});
-            </script>
-            """
-
+            html_resultados = tarjeta_resultados(
+                "Resultados IPR",
+                [
+                    ("Caudal de petróleo qo", f"{qo:,.2f} STB/d"),
+                    ("Caudal a presión de burbuja qB", f"{qb:,.2f} STB/d"),
+                    ("Caudal máximo qo,max", f"{qmax:,.2f} STB/d")
+                ]
+            )
             components.html(html_resultados, height=245)
 
             if regime == "Lineal":
@@ -270,12 +276,15 @@ else:
             ph = 0.052 * mw * tvd
             dp = ph - pform
 
-            st.subheader("Resultados")
-
-            a, b, c = st.columns(3)
-            a.metric("Gradiente hidrostático", f"{gh:.3f} psi/ft")
-            b.metric("Presión hidrostática", f"{ph:,.2f} psi")
-            c.metric("Diferencial de presión", f"{dp:,.2f} psi")
+            html_resultados = tarjeta_resultados(
+                "Resultados de perforación",
+                [
+                    ("Gradiente hidrostático Gh", f"{gh:.3f} psi/ft"),
+                    ("Presión hidrostática Ph", f"{ph:,.2f} psi"),
+                    ("Diferencial de presión ΔP", f"{dp:,.2f} psi")
+                ]
+            )
+            components.html(html_resultados, height=245)
 
             if dp > 0:
                 st.success("🟢 Condición: sobrebalance")
@@ -312,8 +321,66 @@ else:
     with res:
         st.markdown("""
         <div class="card">
-        <h3>🧱 Reservorios</h3>
-        <p>Módulo preparado para la estimación volumétrica del
-        Petróleo Original en Sitio (POES).</p>
+        <h3>Ejercicio 3 — Estimación volumétrica del POES</h3>
+        <p>Estimación del Petróleo Original en Sitio mediante el método volumétrico.</p>
         </div>
         """, unsafe_allow_html=True)
+
+        c1, c2 = st.columns(2)
+
+        with c1:
+            area = st.number_input("A — Área del reservorio [acres]", min_value=0.0, value=500.0, step=10.0)
+            h = st.number_input("h — Espesor bruto [ft]", min_value=0.0, value=50.0, step=1.0)
+            ntg = st.number_input("NTG — Relación net-to-gross", min_value=0.0, max_value=1.0, value=0.75, step=0.01)
+            phi = st.number_input("φ — Porosidad efectiva", min_value=0.0, max_value=1.0, value=0.20, step=0.01)
+            swi = st.number_input("Swi — Saturación inicial de agua", min_value=0.0, max_value=1.0, value=0.25, step=0.01)
+            boi = st.number_input("Boi — Factor volumétrico inicial [rb/STB]", min_value=0.01, value=1.20, step=0.01)
+            fr = st.number_input("FR — Factor de recobro", min_value=0.0, max_value=1.0, value=0.30, step=0.01)
+
+        with c2:
+            st.markdown("""
+            <div class="card">
+            <h4>Datos del reservorio</h4>
+            <p>Los valores de porosidad, saturación, NTG y factor de recobro
+            se ingresan como fracciones entre 0 y 1.</p>
+            <p><b>hₙ = h × NTG</b></p>
+            <p><b>POES = 7758 × A × hₙ × φ × (1 − Swi) / Boi</b></p>
+            <p><b>Recuperable = POES × FR</b></p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        if area <= 0 or h <= 0:
+            st.error("El área y el espesor deben ser mayores que cero.")
+        else:
+            hn = h * ntg
+            poes = 7758 * area * hn * phi * (1 - swi) / boi
+            recuperable = poes * fr
+
+            html_resultados = tarjeta_resultados(
+                "Resultados POES",
+                [
+                    ("Espesor neto hn", f"{hn:,.2f} ft"),
+                    ("POES", f"{poes:,.2f} STB"),
+                    ("POES", f"{poes/1_000_000:,.3f} MMSTB"),
+                    ("Volumen recuperable", f"{recuperable:,.2f} STB")
+                ]
+            )
+            components.html(html_resultados, height=245)
+
+            st.markdown("### Comparación de volúmenes")
+
+            fig = go.Figure()
+            fig.add_trace(go.Bar(
+                x=["POES", "Volumen recuperable"],
+                y=[poes, recuperable],
+                text=[f"{poes:,.0f}", f"{recuperable:,.0f}"],
+                textposition="auto"
+            ))
+            fig.update_layout(
+                title="POES vs volumen recuperable",
+                yaxis_title="Volumen [STB]",
+                template="plotly_white",
+                height=450
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
