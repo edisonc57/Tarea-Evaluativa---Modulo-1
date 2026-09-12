@@ -1,4 +1,4 @@
-
+import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
@@ -235,3 +235,5 @@ else:
             <h3>🧱 Reservorios</h3>
             <p>Estimación volumétrica del Petróleo Original en Sitio (POES).</p>
             <p><b>Próximamente:</b> implementación del ejercicio.</p>
+        </div>
+        """, unsafe_allow_html=True)
