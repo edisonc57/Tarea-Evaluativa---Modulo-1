@@ -1,4 +1,4 @@
-
+import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 import streamlit.components.v1 as components
@@ -245,3 +245,7 @@ else:
         st.markdown("""
         <div class="card">
         <h3>🧱 Reservorios</h3>
+        <p>Módulo preparado para la estimación volumétrica del
+        Petróleo Original en Sitio (POES).</p>
+        </div>
+        """, unsafe_allow_html=True)
