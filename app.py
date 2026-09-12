@@ -234,11 +234,79 @@ else:
     with perf:
         st.markdown("""
         <div class="card">
-        <h3>🔩 Perforación</h3>
-        <p>Módulo preparado para el cálculo de presión hidrostática
-        del lodo usando peso del lodo y TVD.</p>
+        <h3>Ejercicio 2 — Presión hidrostática del lodo</h3>
+        <p>Calculadora de presión hidrostática durante la perforación.</p>
         </div>
         """, unsafe_allow_html=True)
+
+        c1, c2 = st.columns(2)
+
+        with c1:
+            mw = st.number_input("MW — Peso del lodo [ppg]", min_value=0.0, value=10.0, step=0.1)
+            md = st.number_input("MD — Profundidad medida [ft]", min_value=0.0, value=10000.0, step=100.0)
+            tvd = st.number_input("TVD — Profundidad vertical verdadera [ft]", min_value=0.0, value=9000.0, step=100.0)
+            pform = st.number_input("Pform — Presión de formación [psi]", min_value=0.0, value=4500.0, step=100.0)
+
+        with c2:
+            st.markdown("""
+            <div class="card">
+            <h4>Datos del pozo</h4>
+            <p>El cálculo utiliza TVD porque la presión hidrostática
+            depende de la altura vertical de la columna de lodo.</p>
+            <p><b>MW:</b> peso del lodo</p>
+            <p><b>MD:</b> profundidad medida</p>
+            <p><b>TVD:</b> profundidad vertical verdadera</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        if mw <= 0:
+            st.error("MW debe ser mayor que cero.")
+        elif md <= 0 or tvd <= 0:
+            st.error("MD y TVD deben ser mayores que cero.")
+        elif tvd > md:
+            st.error("TVD no puede ser mayor que MD.")
+        else:
+            gh = 0.052 * mw
+            ph = 0.052 * mw * tvd
+            dp = ph - pform
+
+            st.subheader("Resultados")
+
+            a, b, c = st.columns(3)
+            a.metric("Gradiente hidrostático", f"{gh:.3f} psi/ft")
+            b.metric("Presión hidrostática", f"{ph:,.2f} psi")
+            c.metric("Diferencial de presión", f"{dp:,.2f} psi")
+
+            if dp > 0:
+                st.success("🟢 Condición: sobrebalance")
+            elif dp < 0:
+                st.warning("🟠 Condición: bajo balance")
+            else:
+                st.info("🔵 Condición: balance")
+
+            # GRÁFICO CON PLOTLY
+            tvd_values = np.linspace(0, tvd, 100)
+            pressure_values = gh * tvd_values
+
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=pressure_values, y=tvd_values,
+                mode="lines", name="Presión hidrostática"
+            ))
+            fig.add_trace(go.Scatter(
+                x=[ph], y=[tvd],
+                mode="markers", name="Punto ingresado",
+                marker=dict(size=11)
+            ))
+            fig.update_layout(
+                title="Presión hidrostática vs TVD",
+                xaxis_title="Presión hidrostática [psi]",
+                yaxis_title="TVD [ft]",
+                template="plotly_white",
+                height=500,
+                yaxis=dict(autorange="reversed")
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
     # RESERVORIOS
     with res:
