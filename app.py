@@ -1,7 +1,6 @@
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
-import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Oil & Gas Analytics", page_icon="🛢️", layout="wide")
 
@@ -109,15 +108,6 @@ else:
             j = st.number_input("J — Índice de productividad [STB/d/psi]", 0.01, 20.0, 1.5)
             pwf = st.number_input("Pwf — Presión de fondo [psi]", 0.0, 10000.0, 1800.0)
 
-        with c2:
-            st.subheader("Modelo")
-            st.markdown("""
-            <div class="formula">Si Pwf ≥ Pb → qo = J(Pr − Pwf)</div>
-            <div class="formula">qB = J(Pr − Pb)</div>
-            <div class="formula">Si Pwf &lt; Pb → qo = qB + (J·Pb/1.8)[1 − 0.2(Pwf/Pb) − 0.8(Pwf/Pb)²]</div>
-            <div class="formula">qo,max = qB + J·Pb/1.8</div>
-            """, unsafe_allow_html=True)
-
         if pb >= pr:
             st.error("Debe cumplirse Pr > Pb.")
         elif pwf > pr:
@@ -134,22 +124,6 @@ else:
                 st.success("🟢 Régimen lineal: Pwf ≥ Pb")
             else:
                 st.warning("🟠 Régimen de Vogel: Pwf < Pb")
-
-            # JAVASCRIPT
-            js = f"""
-            <div style="padding:15px;border:1px solid #ddd;border-radius:10px">
-            <b>Interacción JavaScript</b>
-            <p id="mensaje">Haz clic para analizar el régimen.</p>
-            <button onclick="analizar()">Analizar</button>
-            </div>
-            <script>
-            function analizar() {{
-                document.getElementById("mensaje").innerHTML =
-                "Pwf = {pwf:.1f} psi | Pb = {pb:.1f} psi | Régimen: {regime}";
-            }}
-            </script>
-            """
-            components.html(js, height=130)
 
             # GRÁFICO CON PLOTLY
             qoc, pwfc = curva_ipr(pr, pb, j)
