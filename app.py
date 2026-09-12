@@ -1,587 +1,180 @@
 import streamlit as st
-import numpy as np
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import streamlit.components.v1 as components
 
-# ============================================================
-# CONFIGURACIÓN GENERAL
-# ============================================================
-st.set_page_config(
-    page_title="Oil & Gas Analytics | IPR",
-    page_icon="🛢️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+st.set_page_config(page_title="Oil & Gas Analytics", page_icon="🛢️", layout="wide")
 
-# ============================================================
-# CSS PERSONALIZADO
-# ============================================================
-st.markdown(
-    """
-    <style>
-        /* Fondo general */
-        .stApp {
-            background: #f4f7f9;
-        }
+# CSS
+st.markdown("""
+<style>
+.stApp {background-color:#0b3d3b;color:#f4f8f7}
+section[data-testid="stSidebar"] {background-color:#062d2b}
+section[data-testid="stSidebar"] * {color:white}
+h1,h2,h3,p,label {color:#f4f8f7 !important}
+.card {background:#145a56;padding:20px;border-radius:15px;margin-bottom:15px;
+box-shadow:0 4px 12px rgba(0,0,0,.20)}
+.hero {background-image:linear-gradient(rgba(0,45,43,.55),rgba(0,45,43,.65)),
+url("https://i0.wp.com/diazvillanueva.com/wp-content/uploads/2021/12/pozos-petroleo-atardecer.jpg");
+background-size:cover;background-position:center;padding:55px 35px;border-radius:18px;margin-bottom:25px}
+.hero h1 {color:white !important;font-size:42px}
+.hero p {color:white !important}
+</style>
+""", unsafe_allow_html=True)
 
-        /* Barra lateral */
-        section[data-testid="stSidebar"] {
-            background: #102a43;
-        }
-
-        section[data-testid="stSidebar"] * {
-            color: white;
-        }
-
-        /* Tarjetas */
-        .card {
-            background: white;
-            border-radius: 16px;
-            padding: 22px;
-            margin-bottom: 18px;
-            box-shadow: 0 5px 18px rgba(16, 42, 67, 0.10);
-            border: 1px solid #d9e2ec;
-        }
-
-        .card:hover {
-            transform: translateY(-2px);
-            transition: 0.2s ease;
-            box-shadow: 0 8px 24px rgba(16, 42, 67, 0.16);
-        }
-
-        .hero {
-            background: linear-gradient(135deg, #102a43, #243b53);
-            color: white;
-            border-radius: 18px;
-            padding: 30px;
-            margin-bottom: 24px;
-        }
-
-        .hero h1 {
-            margin-bottom: 8px;
-            font-size: 2.2rem;
-        }
-
-        .hero p {
-            margin-bottom: 0;
-            font-size: 1.05rem;
-        }
-
-        .section-title {
-            color: #102a43;
-            font-weight: 700;
-            font-size: 1.35rem;
-            margin-top: 8px;
-            margin-bottom: 12px;
-        }
-
-        .formula {
-            background: #eef4f8;
-            border-left: 5px solid #1f7a8c;
-            border-radius: 8px;
-            padding: 14px 18px;
-            margin: 10px 0;
-            font-family: "Courier New", monospace;
-        }
-
-        .small-note {
-            color: #52606d;
-            font-size: 0.90rem;
-        }
-
-        /* Botones de Streamlit */
-        div.stButton > button {
-            border-radius: 10px;
-            font-weight: 600;
-        }
-
-        /* Métricas */
-        div[data-testid="stMetric"] {
-            background: white;
-            border-radius: 14px;
-            padding: 12px;
-            border: 1px solid #d9e2ec;
-            box-shadow: 0 3px 12px rgba(16, 42, 67, 0.08);
-        }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-# ============================================================
-# FUNCIONES DE CÁLCULO
-# ============================================================
-def validate_inputs(pr, pb, j, pwf):
-    """Valida que los parámetros sean físicamente consistentes."""
-    if pr <= 0:
-        return False, "La presión promedio del reservorio (Pr) debe ser mayor que 0 psi."
-    if pb <= 0:
-        return False, "La presión de burbuja (Pb) debe ser mayor que 0 psi."
-    if j <= 0:
-        return False, "El índice de productividad (J) debe ser mayor que 0 STB/d/psi."
-    if pwf < 0:
-        return False, "La presión de fondo fluyente (Pwf) no puede ser negativa."
-    if pb >= pr:
-        return False, "Para este ejercicio debe cumplirse Pr > Pb."
-    if pwf > pr:
-        return False, "Pwf no puede ser mayor que Pr."
-    return True, ""
-
-
-def composite_ipr(pr, pb, j, pwf):
-    """
-    Calcula la IPR compuesta para un yacimiento inicialmente subsaturado.
-
-    Si Pwf >= Pb:
-        qo = J(Pr - Pwf)
-
-    Si Pwf < Pb:
-        qB = J(Pr - Pb)
-        qo = qB + (J*Pb/1.8) * [1 - 0.2(Pwf/Pb) - 0.8(Pwf/Pb)^2]
-
-    Además:
-        qo,max = qB + J*Pb/1.8
-    """
+def calcular_ipr(pr, pb, j, pwf):
     qb = j * (pr - pb)
-    qomax = qb + (j * pb / 1.8)
+    qmax = qb + j * pb / 1.8
 
     if pwf >= pb:
         qo = j * (pr - pwf)
-        regime = "Por encima o en la presión de burbuja"
+        regimen = "Lineal"
     else:
-        ratio = pwf / pb
-        qo = qb + (j * pb / 1.8) * (1 - 0.2 * ratio - 0.8 * ratio**2)
-        regime = "Por debajo de la presión de burbuja"
+        x = pwf / pb
+        qo = qb + (j * pb / 1.8) * (1 - 0.2*x - 0.8*x**2)
+        regimen = "Vogel"
 
-    return qo, qb, qomax, regime
+    return qo, qb, qmax, regimen
 
+def validar(pr, pb, j, pwf):
+    if pr <= 0 or pb <= 0 or j <= 0 or pwf < 0:
+        return "Los valores deben ser positivos."
+    if pb >= pr:
+        return "Debe cumplirse Pr > Pb."
+    if pwf > pr:
+        return "Pwf no puede ser mayor que Pr."
+    return None
 
-def ipr_curve(pr, pb, j, n_points=300):
-    """Genera puntos de la curva IPR completa entre Pwf=0 y Pwf=Pr."""
-    pwf_values = np.linspace(0, pr, n_points)
-    qo_values = []
+# Navegación
+st.sidebar.title("🛢️ Oil & Gas")
+pagina = st.sidebar.radio("Navegación", ["Home", "Ejercicios"])
 
-    qb = j * (pr - pb)
-
-    for pwf in pwf_values:
-        if pwf >= pb:
-            qo = j * (pr - pwf)
-        else:
-            ratio = pwf / pb
-            qo = qb + (j * pb / 1.8) * (
-                1 - 0.2 * ratio - 0.8 * ratio**2
-            )
-        qo_values.append(max(qo, 0))
-
-    return pwf_values, np.array(qo_values)
-
-
-# ============================================================
-# COMPONENTE HTML + JAVASCRIPT
-# ============================================================
-def javascript_status_card(regime, pwf, pb):
-    """Tarjeta con una interacción visible implementada con JavaScript."""
-    if pwf >= pb:
-        initial_message = "El punto calculado está en el régimen lineal."
-        status = "LINEAL"
-    else:
-        initial_message = "El punto calculado está en el régimen de Vogel."
-        status = "VOGEL"
-
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{
-                margin: 0;
-                font-family: Arial, sans-serif;
-                background: transparent;
-            }}
-            .js-card {{
-                background: #ffffff;
-                border: 1px solid #d9e2ec;
-                border-radius: 14px;
-                padding: 18px;
-                box-shadow: 0 4px 14px rgba(16,42,67,.08);
-            }}
-            .badge {{
-                display: inline-block;
-                padding: 6px 12px;
-                border-radius: 20px;
-                background: #eef4f8;
-                color: #102a43;
-                font-weight: bold;
-                margin-bottom: 10px;
-            }}
-            button {{
-                background: #102a43;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                padding: 9px 14px;
-                cursor: pointer;
-                font-weight: bold;
-            }}
-            button:hover {{
-                background: #243b53;
-            }}
-            #message {{
-                margin-top: 12px;
-                color: #52606d;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="js-card">
-            <div class="badge" id="badge">{status}</div>
-            <div>
-                <strong>Condición actual:</strong> Pwf = {pwf:.1f} psi |
-                Pb = {pb:.1f} psi
-            </div>
-            <p id="message">{initial_message}</p>
-            <button onclick="analizar()">Analizar régimen</button>
-        </div>
-
-        <script>
-            function analizar() {{
-                const badge = document.getElementById("badge");
-                const message = document.getElementById("message");
-
-                if ({pwf} >= {pb}) {{
-                    badge.innerHTML = "LINEAL";
-                    message.innerHTML =
-                        "JavaScript confirma: Pwf está por encima de Pb, " +
-                        "por lo que se utiliza qo = J(Pr - Pwf).";
-                }} else {{
-                    badge.innerHTML = "VOGEL";
-                    message.innerHTML =
-                        "JavaScript confirma: Pwf está por debajo de Pb, " +
-                        "por lo que se utiliza la expresión no lineal de Vogel.";
-                }}
-            }}
-        </script>
-    </body>
-    </html>
-    """
-    return html
-
-
-# ============================================================
-# BARRA LATERAL / NAVEGACIÓN PRINCIPAL
-# ============================================================
-st.sidebar.markdown("## 🛢️ Oil & Gas Analytics")
-st.sidebar.markdown("---")
-
-page = st.sidebar.radio(
-    "Navegación",
-    ["Home", "Ejercicios"],
-)
-
-st.sidebar.markdown("---")
-st.sidebar.caption("Bootcamp Data Analytics for Oil & Gas")
-st.sidebar.caption("Aplicación desarrollada con Python + Streamlit + HTML + CSS + JavaScript")
-
-
-# ============================================================
-# HOME
-# ============================================================
-if page == "Home":
-    st.markdown(
-        """
-        <div class="hero">
-            <h1>🛢️ Oil & Gas Analytics</h1>
-            <p>
-                Aplicación web para análisis técnico de producción,
-                perforación y reservorios mediante Python y Streamlit.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+if pagina == "Home":
+    st.markdown("""
+    <div class="hero">
+        <h1>Oil & Gas Analytics</h1>
+        <p>Aplicación web para análisis técnico de la industria Oil & Gas</p>
+    </div>
+    """, unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown(
-            """
-            <div class="card">
-                <h3>👨‍💻 Participante</h3>
-                <p><strong>Edison Contreras</strong></p>
-                <p class="small-note">
-                    Petroleum Engineer | Data Analytics for Oil & Gas
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown("""
+        <div class="card">
+        <h3>👨‍💻 Participante</h3>
+        <p><b>Edison Contreras</b></p>
+        <p>Petroleum Engineer | Data Analytics for Oil & Gas</p>
+        </div>
+        """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown(
-            """
-            <div class="card">
-                <h3>📚 Programa</h3>
-                <p><strong>Bootcamp Data Analytics for Oil & Gas</strong></p>
-                <p class="small-note">
-                    Aplicación orientada al análisis de problemas de ingeniería
-                    mediante herramientas de programación y visualización.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    st.markdown(
-        """
+        st.markdown("""
         <div class="card">
-            <div class="section-title">🎯 Propósito de la aplicación</div>
-            <p>
-                Esta aplicación integra Python, Streamlit, HTML, CSS y JavaScript
-                para desarrollar herramientas sencillas de cálculo aplicadas a
-                Producción, Perforación y Reservorios.
-            </p>
-            <p>
-                El primer ejercicio implementa una calculadora de desempeño de
-                afluencia (IPR) para un yacimiento de petróleo inicialmente
-                subsaturado, diferenciando el comportamiento lineal por encima
-                de la presión de burbuja y el comportamiento de Vogel por debajo
-                de dicha presión.
-            </p>
+        <h3>📚 Programa</h3>
+        <p><b>Bootcamp Data Analytics for Oil & Gas</b></p>
+        <p>Python, Streamlit, HTML, CSS y JavaScript.</p>
         </div>
-        """,
-        unsafe_allow_html=True,
-    )
+        """, unsafe_allow_html=True)
 
-    st.info("Utiliza la barra lateral para entrar en **Ejercicios**.")
+    st.markdown("""
+    <div class="card">
+    <h3>🎯 Propósito</h3>
+    <p>Aplicación para realizar cálculos de ingeniería relacionados con
+    Producción, Perforación y Reservorios mediante una interfaz web.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-
-# ============================================================
-# EJERCICIOS
-# ============================================================
 else:
-    st.markdown(
-        """
-        <div class="hero">
-            <h1>📊 Ejercicios técnicos</h1>
-            <p>Producción · Perforación · Reservorios</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.title("📊 Ejercicios técnicos")
+    prod, perf, res = st.tabs(["🛢️ Producción", "🔩 Perforación", "🧱 Reservorios"])
 
-    tab_prod, tab_perf, tab_res = st.tabs(
-        ["🛢️ Producción", "🔩 Perforación", "🧱 Reservorios"]
-    )
+    with prod:
+        st.subheader("Ejercicio 1 — IPR compuesta con punto de burbuja")
 
-    # --------------------------------------------------------
-    # PRODUCCIÓN
-    # --------------------------------------------------------
-    with tab_prod:
-        st.markdown(
-            """
+        col1, col2 = st.columns(2)
+
+        with col1:
+            pr = st.number_input("Pr — Presión del reservorio [psi]", value=3000.0)
+            pb = st.number_input("Pb — Presión de burbuja [psi]", value=2200.0)
+            j = st.number_input("J — Índice de productividad [STB/d/psi]", value=1.5)
+            pwf = st.number_input("Pwf — Presión de fondo fluyente [psi]", value=1800.0)
+
+        with col2:
+            st.markdown("""
             <div class="card">
-                <div class="section-title">
-                    Ejercicio 1 — Producción: IPR compuesta con punto de burbuja
-                </div>
-                <p>
-                    Calculadora de desempeño de afluencia para un yacimiento
-                    inicialmente subsaturado. La aplicación selecciona
-                    automáticamente el modelo según Pwf respecto a Pb.
-                </p>
+            <h3>📐 Modelo</h3>
+            <p>Si Pwf ≥ Pb: <b>qo = J(Pr − Pwf)</b></p>
+            <p>Si Pwf &lt; Pb:</p>
+            <p><b>qo = qB + (J·Pb/1.8)[1 − 0.2(Pwf/Pb) − 0.8(Pwf/Pb)²]</b></p>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            """, unsafe_allow_html=True)
 
-        input_col, info_col = st.columns([1, 1])
+        error = validar(pr, pb, j, pwf)
 
-        with input_col:
-            st.subheader("📥 Parámetros de entrada")
-
-            pr = st.number_input(
-                "Pr — Presión promedio del reservorio [psi]",
-                min_value=1.0,
-                value=3000.0,
-                step=50.0,
-            )
-
-            pb = st.number_input(
-                "Pb — Presión de burbuja [psi]",
-                min_value=1.0,
-                value=2200.0,
-                step=50.0,
-            )
-
-            j = st.number_input(
-                "J — Índice de productividad [STB/d/psi]",
-                min_value=0.0001,
-                value=1.5,
-                step=0.1,
-                format="%.4f",
-            )
-
-            pwf = st.number_input(
-                "Pwf — Presión de fondo fluyente [psi]",
-                min_value=0.0,
-                value=1800.0,
-                step=50.0,
-            )
-
-        with info_col:
-            st.subheader("📐 Modelo de cálculo")
-
-            st.markdown(
-                """
-                <div class="formula">
-                    Si Pwf ≥ Pb:<br>
-                    qo = J(Pr − Pwf)
-                </div>
-
-                <div class="formula">
-                    qB = J(Pr − Pb)
-                </div>
-
-                <div class="formula">
-                    Si Pwf &lt; Pb:<br>
-                    qo = qB + (J·Pb/1.8)
-                    · [1 − 0.2(Pwf/Pb) − 0.8(Pwf/Pb)²]
-                </div>
-
-                <div class="formula">
-                    qo,max = qB + (J·Pb/1.8)
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        valid, error_message = validate_inputs(pr, pb, j, pwf)
-
-        if not valid:
-            st.error(error_message)
+        if error:
+            st.error(error)
         else:
-            qo, qb, qomax, regime = composite_ipr(pr, pb, j, pwf)
+            qo, qb, qmax, regimen = calcular_ipr(pr, pb, j, pwf)
 
-            st.markdown("### 📈 Resultados")
+            st.subheader("Resultados")
+            a, b, c = st.columns(3)
+            a.metric("qo", f"{qo:,.2f} STB/d")
+            b.metric("qB", f"{qb:,.2f} STB/d")
+            c.metric("qo,max", f"{qmax:,.2f} STB/d")
 
-            m1, m2, m3 = st.columns(3)
-
-            with m1:
-                st.metric("Caudal de petróleo qo", f"{qo:,.2f} STB/d")
-
-            with m2:
-                st.metric("Caudal a Pb (qB)", f"{qb:,.2f} STB/d")
-
-            with m3:
-                st.metric("Caudal máximo qo,max", f"{qomax:,.2f} STB/d")
-
-            if pwf >= pb:
-                st.success(
-                    f"🟢 Régimen lineal: Pwf = {pwf:.1f} psi ≥ Pb = {pb:.1f} psi."
-                )
+            if regimen == "Lineal":
+                st.success("Régimen lineal: Pwf ≥ Pb")
             else:
-                st.warning(
-                    f"🟠 Régimen de Vogel: Pwf = {pwf:.1f} psi < Pb = {pb:.1f} psi."
-                )
+                st.warning("Régimen de Vogel: Pwf < Pb")
 
-            # Interacción JavaScript requerida por la tarea
-            st.markdown("### ⚙️ Interacción HTML + JavaScript")
-            components.html(
-                javascript_status_card(regime, pwf, pb),
-                height=185,
-            )
-
-            # ------------------------------------------------
-            # CURVA IPR
-            # ------------------------------------------------
-            st.markdown("### 📉 Curva IPR completa")
-
-            pwf_curve, qo_curve = ipr_curve(pr, pb, j)
-
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.plot(qo_curve, pwf_curve, linewidth=2.5, label="IPR compuesta")
-            ax.scatter(
-                [qo],
-                [pwf],
-                s=90,
-                zorder=5,
-                label="Punto calculado",
-            )
-            ax.axhline(
-                pb,
-                linestyle="--",
-                linewidth=1.5,
-                label=f"Pb = {pb:.0f} psi",
-            )
-            ax.axhline(
-                pr,
-                linestyle=":",
-                linewidth=1.2,
-                label=f"Pr = {pr:.0f} psi",
-            )
-
-            ax.set_xlabel("Caudal de petróleo, qo [STB/d]")
-            ax.set_ylabel("Presión de fondo fluyente, Pwf [psi]")
-            ax.set_title("IPR compuesta — Modelo lineal + Vogel")
-            ax.grid(True, alpha=0.25)
-            ax.legend()
-            fig.tight_layout()
-
-            st.pyplot(fig, use_container_width=True)
-
-            st.markdown(
-                """
-                <div class="card">
-                    <strong>Interpretación:</strong>
-                    la curva combina el comportamiento lineal cuando la presión
-                    de fondo está por encima de la presión de burbuja y el
-                    comportamiento no lineal de Vogel cuando Pwf cae por debajo
-                    de Pb. El punto calculado se actualiza automáticamente al
-                    modificar los parámetros.
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-    # --------------------------------------------------------
-    # PERFORACIÓN
-    # --------------------------------------------------------
-    with tab_perf:
-        st.markdown(
-            """
-            <div class="card">
-                <div class="section-title">🔩 Perforación</div>
-                <p>
-                    Módulo reservado para el cálculo de presión hidrostática
-                    del lodo a partir del peso del lodo y la TVD, con
-                    comparación frente a la presión de formación.
-                </p>
-                <p class="small-note">
-                    Este módulo se mantiene preparado para incorporar el
-                    ejercicio correspondiente.
-                </p>
+            components.html(f"""
+            <div style="background:#145a56;padding:15px;border-radius:12px;color:white">
+                <button onclick="mensaje()" style="padding:8px;border:0;border-radius:7px">
+                Analizar régimen</button>
+                <p id="msg">Pulsa el botón para analizar el punto.</p>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            <script>
+            function mensaje() {{
+                document.getElementById("msg").innerHTML =
+                "Pwf = {pwf:.1f} psi | Pb = {pb:.1f} psi | Régimen: {regimen}";
+            }}
+            </script>
+            """, height=120)
 
-    # --------------------------------------------------------
-    # RESERVORIOS
-    # --------------------------------------------------------
-    with tab_res:
-        st.markdown(
-            """
-            <div class="card">
-                <div class="section-title">🧱 Reservorios</div>
-                <p>
-                    Módulo reservado para la estimación volumétrica del
-                    Petróleo Original en Sitio (POES).
-                </p>
-                <p class="small-note">
-                    Este módulo se mantiene preparado para incorporar el
-                    ejercicio correspondiente.
-                </p>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            # Curva IPR con Plotly
+            pwfs = [pr * i / 100 for i in range(101)]
+            qs = [calcular_ipr(pr, pb, j, p)[0] for p in pwfs]
+
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=qs, y=pwfs, mode="lines", name="IPR"))
+            fig.add_trace(go.Scatter(x=[qo], y=[pwf], mode="markers", name="Punto calculado"))
+            fig.add_hline(y=pb, line_dash="dash", annotation_text="Pb")
+
+            fig.update_layout(
+                title="Curva IPR compuesta",
+                xaxis_title="Caudal de petróleo, qo [STB/d]",
+                yaxis_title="Pwf [psi]",
+                template="plotly_dark",
+                paper_bgcolor="#145a56",
+                plot_bgcolor="#145a56"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+    with perf:
+        st.markdown("""
+        <div class="card">
+        <h3>🔩 Perforación</h3>
+        <p>Módulo preparado para calcular la presión hidrostática del lodo
+        a partir del peso del lodo y la TVD.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with res:
+        st.markdown("""
+        <div class="card">
+        <h3>🧱 Reservorios</h3>
+        <p>Módulo preparado para estimar el Petróleo Original en Sitio (POES).</p>
+        </div>
+        """, unsafe_allow_html=True)
+
 
