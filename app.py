@@ -1,6 +1,7 @@
-import streamlit as st
+
 import numpy as np
 import plotly.graph_objects as go
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Oil & Gas Analytics", page_icon="🛢️", layout="wide")
 
@@ -115,10 +116,151 @@ else:
         else:
             qo, qb, qmax, regime = ipr(pr, pb, j, pwf)
 
-            a, b, c = st.columns(3)
-            a.metric("qo", f"{qo:,.2f} STB/d")
-            b.metric("qB", f"{qb:,.2f} STB/d")
-            c.metric("qo,max", f"{qmax:,.2f} STB/d")
+            # TARJETA DE RESULTADOS CON HTML + CSS + JAVASCRIPT
+            html_resultados = f"""
+            <style>
+                * {{ box-sizing: border-box; }}
+                body {{
+                    margin: 0;
+                    background: transparent;
+                    font-family: Arial, sans-serif;
+                }}
+
+                #shell {{
+                    position: relative;
+                    padding: 2px;
+                    border-radius: 22px;
+                    background: #163d59;
+                    overflow: hidden;
+                }}
+
+                #shell::before {{
+                    content: "";
+                    position: absolute;
+                    width: 180px;
+                    height: 180px;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-50%, -50%);
+                    background: #16e0c0;
+                    filter: blur(22px);
+                    opacity: 0;
+                    transition: opacity .25s;
+                }}
+
+                #shell.active::before {{
+                    opacity: .9;
+                    animation: giro 3s linear infinite;
+                }}
+
+                @keyframes giro {{
+                    0% {{ transform: translate(-50%, -50%) rotate(0deg) translateX(270px); }}
+                    100% {{ transform: translate(-50%, -50%) rotate(360deg) translateX(270px); }}
+                }}
+
+                #card {{
+                    position: relative;
+                    z-index: 1;
+                    background: #173f5f;
+                    border-radius: 20px;
+                    padding: 22px 28px;
+                    color: white;
+                }}
+
+                .titulo {{
+                    color: #16e0c0;
+                    font-size: 24px;
+                    font-weight: bold;
+                    margin-bottom: 18px;
+                }}
+
+                .resultados {{
+                    display: flex;
+                    gap: 15px;
+                    flex-wrap: wrap;
+                }}
+
+                .resultado {{
+                    flex: 1;
+                    min-width: 180px;
+                    background: #205577;
+                    border-radius: 12px;
+                    padding: 15px;
+                }}
+
+                .nombre {{
+                    font-size: 14px;
+                    color: #d8e6ee;
+                }}
+
+                .valor {{
+                    color: #16e0c0;
+                    font-size: 22px;
+                    font-weight: bold;
+                    margin-top: 5px;
+                }}
+
+                #status {{
+                    margin-top: 18px;
+                    padding-top: 12px;
+                    border-top: 1px solid #4b748d;
+                    color: #e5edf2;
+                }}
+            </style>
+
+            <div id="shell">
+                <div id="card">
+                    <div class="titulo">Resultados IPR</div>
+
+                    <div class="resultados">
+                        <div class="resultado">
+                            <div class="nombre">Caudal de petróleo qo</div>
+                            <div class="valor">{qo:,.2f} STB/d</div>
+                        </div>
+
+                        <div class="resultado">
+                            <div class="nombre">Caudal a presión de burbuja qB</div>
+                            <div class="valor">{qb:,.2f} STB/d</div>
+                        </div>
+
+                        <div class="resultado">
+                            <div class="nombre">Caudal máximo qo,max</div>
+                            <div class="valor">{qmax:,.2f} STB/d</div>
+                        </div>
+                    </div>
+
+                    <div id="status">Estado: cursor fuera</div>
+                </div>
+            </div>
+
+            <script>
+                const shell = document.getElementById("shell");
+                const card = document.getElementById("card");
+                const status = document.getElementById("status");
+
+                shell.addEventListener("mouseenter", () => {{
+                    shell.classList.add("active");
+                    status.textContent = "Estado: interacción activa";
+                }});
+
+                shell.addEventListener("mouseleave", () => {{
+                    shell.classList.remove("active");
+                    status.textContent = "Estado: cursor fuera";
+                    card.style.setProperty("--x", "50%");
+                    card.style.setProperty("--y", "50%");
+                }});
+
+                card.addEventListener("mousemove", (event) => {{
+                    const rect = card.getBoundingClientRect();
+                    const x = ((event.clientX - rect.left) / rect.width) * 100;
+                    const y = ((event.clientY - rect.top) / rect.height) * 100;
+                    card.style.setProperty("--x", x + "%");
+                    card.style.setProperty("--y", y + "%");
+                }});
+            </script>
+            """
+
+            components.html(html_resultados, height=230)
 
             if regime == "Lineal":
                 st.success("🟢 Régimen lineal: Pwf ≥ Pb")
