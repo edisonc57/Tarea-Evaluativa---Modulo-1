@@ -229,7 +229,7 @@ else:
                         </div>
                     </div>
 
-                    <div id="status">Estado: cursor fuera</div>
+                    <div id="status"> </div>
                 </div>
             </div>
 
@@ -240,12 +240,12 @@ else:
 
                 shell.addEventListener("mouseenter", () => {{
                     shell.classList.add("active");
-                    status.textContent = "Estado: interacción activa";
+                    status.textContent = " ";
                 }});
 
                 shell.addEventListener("mouseleave", () => {{
                     shell.classList.remove("active");
-                    status.textContent = "Estado: cursor fuera";
+                    status.textContent = "";
                     card.style.setProperty("--x", "50%");
                     card.style.setProperty("--y", "50%");
                 }});
