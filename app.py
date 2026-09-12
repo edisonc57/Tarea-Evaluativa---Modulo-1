@@ -363,7 +363,7 @@ else:
                     ("POES", f"{poes:,.2f} STB"),
                     ("POES", f"{poes/1_000_000:,.3f} MMSTB"),
                     ("Volumen recuperable", f"{recuperable:,.2f} STB")
-                    ("Volumen recuperable", f"{recuperable:/1_000_000:,.3f} MMSTB")
+                    ("Volumen recuperable", f"{recuperable/1_000_000:,.3f} MMSTB")
                 ]
             )
             components.html(html_resultados, height=245)
